@@ -1,0 +1,569 @@
+'use client';
+
+import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Header, Footer, CategorySelect } from '@/app/components';
+import { AlertCircle, CheckCircle, Upload, X } from 'lucide-react';
+import AdminHeader from '@/app/admin/components/AdminHeader';
+
+interface ArticleForm {
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  author: string;
+  image: string;
+  tags: string;
+  readTime: number;
+  featured: boolean;
+  gallery: Array<{ url: string; caption: string }>;
+}
+
+export default function CreateArticlePage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdminAuth, setIsAdminAuth] = useState<string | null>(null);
+  const [form, setForm] = useState<ArticleForm>({
+    title: '',
+    excerpt: '',
+    content: '',
+    category: '',
+    author: '',
+    image: '',
+    tags: '',
+    readTime: 5,
+    featured: false,
+    gallery: [],
+  });
+
+  useEffect(() => {
+    const auth = localStorage.getItem('adminAuth');
+    if (!auth) {
+      router.push('/admin/login');
+    } else {
+      setIsAdminAuth(auth);
+      setIsLoading(false);
+    }
+  }, [router]);
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<{ name: string; url: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [galleryCaption, setGalleryCaption] = useState('');
+
+
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Please upload an image file' });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image size must be less than 10MB' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setUploadedImage({ name: file.name, url: data.url });
+        setForm((prev) => ({ ...prev, image: data.url }));
+        setMessage({ type: 'success', text: 'Featured image uploaded successfully!' });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to upload image' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to upload image' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const tagArray = form.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag !== '');
+
+      const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          excerpt: form.excerpt,
+          content: form.content,
+          category_id: parseInt(form.category),
+          author: form.author,
+          image: form.image || 'https://images.unsplash.com/photo-1585776245865-b0d71db86b00?w=800&q=80',
+          tags: tagArray,
+          readTime: parseInt(form.readTime.toString()),
+          featured: form.featured,
+          gallery: form.gallery,
+          status: 'published',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Article published successfully!' });
+        setForm({
+          title: '',
+          excerpt: '',
+          content: '',
+          category: 'technology',
+          author: '',
+          image: '',
+          tags: '',
+          readTime: 5,
+          featured: false,
+          gallery: [],
+        });
+        // Redirect to admin dashboard after 2 seconds
+        setTimeout(() => {
+          router.push('/admin/articles');
+        }, 2000);
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to publish article' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl font-semibold">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <AdminHeader />
+      <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="mb-8">
+            <h1 className="text-4xl font-serif font-bold text-neutral-900 dark:text-white mb-2">
+              Create New Article
+            </h1>
+            <p className="text-neutral-600 dark:text-neutral-400">
+              Publish a new article to the Amakuru platform
+            </p>
+          </div>
+
+          {/* Messages */}
+          {message && (
+            <div
+              className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+                message.type === 'success'
+                  ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+              )}
+              <p
+                className={`${
+                  message.type === 'success'
+                    ? 'text-green-800 dark:text-green-200'
+                    : 'text-red-800 dark:text-red-200'
+                }`}
+              >
+                {message.text}
+              </p>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-8">
+            {/* Title */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Article Title *
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                placeholder="Enter article headline"
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+                required
+              />
+            </div>
+
+            {/* Author */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Author Name *
+              </label>
+              <input
+                type="text"
+                name="author"
+                value={form.author}
+                onChange={handleChange}
+                placeholder="Enter author name"
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+                required
+              />
+            </div>
+
+            {/* Excerpt */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Excerpt / Summary *
+              </label>
+              <textarea
+                name="excerpt"
+                value={form.excerpt}
+                onChange={handleChange}
+                placeholder="Brief summary of the article (appears in listings)"
+                rows={3}
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+                required
+              />
+            </div>
+
+            {/* Content */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Article Content *
+              </label>
+              <textarea
+                name="content"
+                value={form.content}
+                onChange={handleChange}
+                placeholder="Full article content"
+                rows={10}
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none font-mono text-sm"
+                required
+              />
+            </div>
+
+            {/* Category */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Category *
+              </label>
+              <CategorySelect
+                value={form.category}
+                onChange={(value) => setForm((prev) => ({ ...prev, category: value }))}
+                placeholder="Select a category"
+                required
+              />
+            </div>
+
+            {/* Featured Image */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Featured Image
+              </label>
+
+              {/* Upload Preview */}
+              {uploadedImage && (
+                <div className="mb-4 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                        {uploadedImage.name}
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">Uploaded successfully</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedImage(null);
+                      setForm((prev) => ({ ...prev, image: '' }));
+                    }}
+                    className="p-1 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
+                  >
+                    <X className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload Section */}
+              <label className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg hover:border-amber-500 dark:hover:border-amber-500 transition-colors cursor-pointer bg-neutral-50 dark:bg-neutral-800/50">
+                <div className="text-center">
+                  <Upload className="w-8 h-8 text-neutral-400 dark:text-neutral-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    Click to upload
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                    PNG, JPG, GIF up to 10MB
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Gallery Images */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Gallery Images (with captions)
+              </label>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4">
+                Add additional images to display as a gallery within the article
+              </p>
+
+              {/* Gallery Items Display */}
+              {form.gallery.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  {form.gallery.map((item, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg flex items-start justify-between"
+                    >
+                      <div className="flex-grow">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-white mb-1">
+                          Image {index + 1}
+                        </p>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400 break-all">
+                          {item.url.substring(0, 60)}...
+                        </p>
+                        {item.caption && (
+                          <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-2 italic">
+                            "{item.caption}"
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            gallery: prev.gallery.filter((_, i) => i !== index),
+                          }));
+                        }}
+                        className="ml-4 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors flex-shrink-0"
+                      >
+                        <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Gallery Item */}
+              <div className="space-y-3 p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-300 dark:border-neutral-700 rounded-lg">
+                <div>
+                  <label htmlFor="galleryFile" className="block text-xs font-semibold text-neutral-900 dark:text-white mb-2">
+                    Upload Image
+                  </label>
+                  <label className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg hover:border-amber-500 dark:hover:border-amber-500 transition-colors cursor-pointer bg-white dark:bg-neutral-800">
+                    <div className="text-center">
+                      <Upload className="w-6 h-6 text-neutral-400 dark:text-neutral-500 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                        Click to upload
+                      </p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        PNG, JPG, GIF up to 10MB
+                      </p>
+                    </div>
+                    <input
+                      id="galleryFile"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-900 dark:text-white mb-2">
+                    Caption (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Describe this image (e.g., 'Market vendors at Kigali Central Market')"
+                    value={galleryCaption}
+                    onChange={(e) => setGalleryCaption(e.target.value)}
+                    className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const fileInput = document.getElementById('galleryFile') as HTMLInputElement;
+                    const file = fileInput.files?.[0];
+
+                    if (!file) {
+                      setMessage({ type: 'error', text: 'Please select an image file' });
+                      return;
+                    }
+
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                      setMessage({ type: 'error', text: 'Please upload an image file' });
+                      return;
+                    }
+
+                    // Validate file size (max 10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                      setMessage({ type: 'error', text: 'Image size must be less than 10MB' });
+                      return;
+                    }
+
+                    setUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+
+                      const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      const data = await response.json();
+
+                      if (data.success) {
+                        setForm((prev) => ({
+                          ...prev,
+                          gallery: [
+                            ...prev.gallery,
+                            { url: data.url, caption: galleryCaption },
+                          ],
+                        }));
+                        fileInput.value = '';
+                        setGalleryCaption('');
+                        setMessage({ type: 'success', text: 'Image added to gallery!' });
+                        setTimeout(() => setMessage(null), 2000);
+                      } else {
+                        setMessage({ type: 'error', text: data.error || 'Failed to upload image' });
+                      }
+                    } catch (error) {
+                      setMessage({ type: 'error', text: 'Failed to upload image' });
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                  disabled={uploading}
+                  className="w-full px-4 py-2 bg-red-700 hover:bg-red-800 disabled:bg-red-700/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                >
+                  {uploading ? 'Uploading...' : 'Add to Gallery'}
+                </button>
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Tags (comma-separated)
+              </label>
+              <input
+                type="text"
+                name="tags"
+                value={form.tags}
+                onChange={handleChange}
+                placeholder="e.g., Rwanda, Technology, Innovation"
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Read Time */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+                Estimated Read Time (minutes)
+              </label>
+              <input
+                type="number"
+                name="readTime"
+                value={form.readTime}
+                onChange={handleChange}
+                min="1"
+                max="60"
+                className="w-full px-4 py-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-red-700 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Featured */}
+            <div className="mb-8 flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="featured"
+                name="featured"
+                checked={form.featured}
+                onChange={handleChange}
+                className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-700"
+              />
+              <label htmlFor="featured" className="text-sm font-medium text-neutral-900 dark:text-white">
+                Feature this article on homepage
+              </label>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full px-6 py-3 bg-red-700 hover:bg-red-800 disabled:bg-red-700/50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+            >
+              {loading ? 'Publishing...' : 'Publish Article'}
+            </button>
+          </form>
+
+          {/* Info Box */}
+          <div className="mt-12 bg-amber-50 dark:bg-amber-950/30 border border-red-200 dark:border-amber-900/50 rounded-lg p-6">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-200 mb-2">Tips for Publishing</h3>
+            <ul className="text-sm text-amber-800 dark:text-amber-300 space-y-2">
+              <li>✓ Use clear, descriptive headlines</li>
+              <li>✓ Write compelling excerpts (100-150 characters)</li>
+              <li>✓ Use high-quality featured images from file upload or URLs</li>
+              <li>✓ Add additional gallery images with descriptive captions</li>
+              <li>✓ Add relevant tags for better discoverability</li>
+              <li>✓ Ensure read time is accurate</li>
+            </ul>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
