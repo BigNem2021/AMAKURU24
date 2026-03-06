@@ -59,8 +59,8 @@ export function TopBar() {
         82: { condition: 'Heavy Showers', icon: '⛈️' },
         85: { condition: 'Snow Showers', icon: '❄️' },
         86: { condition: 'Heavy Snow Showers', icon: '❄️' },
-        80: { condition: 'Thunderstorm', icon: '⛈️' },
-        82: { condition: 'Thunderstorm with Hail', icon: '⛈️' },
+        95: { condition: 'Thunderstorm', icon: '⛈️' },
+        96: { condition: 'Thunderstorm with Hail', icon: '⛈️' },
       };
 
       const weatherInfo = weatherConditions[current.weather_code] || { condition: 'Unknown', icon: '🌤️' };
