@@ -45,5 +45,3 @@ Thumbs.db
 storybook-static
 
 /generated/prisma
-node_modules/
-.next/

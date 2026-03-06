@@ -22,9 +22,9 @@ interface Article {
 }
 
 interface ArticleParams {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 const formatDateInKinyarwanda = (dateString: string) => {
@@ -37,7 +37,7 @@ const formatDateInKinyarwanda = (dateString: string) => {
 };
 
 export default function ArticlePage({ params: paramsPromise }: ArticleParams) {
-  const params = React.use(paramsPromise as any) as { slug: string };
+  const params = React.use(paramsPromise);
   const router = useRouter();
   const { language } = useAppStore();
   const t = getTranslation(language);
