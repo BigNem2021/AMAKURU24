@@ -30,19 +30,16 @@ export async function GET(request: NextRequest) {
           {
             title: {
               contains: searchTerm,
-              mode: 'insensitive',
             },
           },
           {
             excerpt: {
               contains: searchTerm,
-              mode: 'insensitive',
             },
           },
           {
             content: {
               contains: searchTerm,
-              mode: 'insensitive',
             },
           },
         ],

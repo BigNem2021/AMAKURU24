@@ -11,7 +11,7 @@ interface AppState {
   setLanguage: (language: Language) => void;
 }
 
-export const useAppStore = create<AppState>(
+export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       theme: 'system',

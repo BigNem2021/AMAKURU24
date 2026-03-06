@@ -53,7 +53,7 @@ export default function HomePage() {
           <div className="hidden md:block">
             <BreakingNewsCarousel articles={articles.slice(0, 5)} />
           </div>
-        )
+        )}
 
         {/* Featured Three-Column Grid Layout */}
         {articles.length > 0 && (
@@ -86,7 +86,7 @@ export default function HomePage() {
                       </p>
                       <div className="flex items-center gap-4 text-xs text-neutral-600 dark:text-neutral-400">
                         <span>{articles[0].author}</span>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>{articles[0].publishedAt}</span>
                       </div>
                     </div>
