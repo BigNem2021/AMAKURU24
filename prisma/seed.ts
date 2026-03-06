@@ -446,7 +446,7 @@ async function main() {
     );
 
     // Assign categories to articles
-    const categoryAssignment = {
+    const categoryAssignment: { [key: number]: string } = {
       0: 'amakuru', // Breaking news
       1: 'politiki', // Politics
       2: 'ubuzima', // Health
