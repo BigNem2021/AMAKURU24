@@ -62,6 +62,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               {categories
                 .filter((category) => category.name !== 'Ahabanza')
+                .slice(0, 6)
                 .map((category) => (
                   <li key={category.id}>
                     <Link
