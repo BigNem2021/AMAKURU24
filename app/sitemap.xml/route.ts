@@ -8,7 +8,6 @@ export async function GET() {
   try {
     // Fetch all articles for the sitemap
     const articlesResponse = await fetch(`${baseUrl}/api/articles?limit=1000`, {
-      cache: 'revalidate',
       next: { revalidate: 3600 }, // Revalidate every hour
     });
     

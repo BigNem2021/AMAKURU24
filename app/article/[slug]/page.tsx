@@ -22,9 +22,9 @@ interface Article {
 }
 
 interface ArticleParams {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 const formatDateInKinyarwanda = (dateString: string) => {
@@ -37,7 +37,7 @@ const formatDateInKinyarwanda = (dateString: string) => {
 };
 
 export default function ArticlePage({ params: paramsPromise }: ArticleParams) {
-  const params = React.use(paramsPromise as any);
+  const params = React.use(paramsPromise);
   const router = useRouter();
   const { language } = useAppStore();
   const t = getTranslation(language);
@@ -199,10 +199,10 @@ export default function ArticlePage({ params: paramsPromise }: ArticleParams) {
                 {article.category}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mb-3 sm:mb-4 text-neutral-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight mb-3 sm:mb-4 text-neutral-900 dark:text-white text-justify">
               {article.title}
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-neutral-600 dark:text-neutral-400 mb-4 sm:mb-6 italic">
+            <p className="text-base sm:text-lg md:text-xl text-neutral-600 dark:text-neutral-400 mb-4 sm:mb-6 italic text-justify">
               {article.excerpt}
             </p>
 
@@ -289,7 +289,7 @@ export default function ArticlePage({ params: paramsPromise }: ArticleParams) {
 
           {/* Article Content */}
           <div className="prose dark:prose-dark max-w-none mb-8 sm:mb-10 md:mb-12">
-            <div className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-wrap">
+            <div className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-wrap text-justify">
               {article.content}
             </div>
           </div>
