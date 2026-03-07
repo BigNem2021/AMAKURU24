@@ -56,20 +56,22 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Quick Links */}
+          {/* Ibice - Categories except Ahabanza */}
           <div className="space-y-4">
-            <h4 className="font-semibold tracking-widest text-xs">{t.footer.sections}</h4>
+            <h4 className="font-semibold tracking-widest text-xs">Ibice</h4>
             <ul className="space-y-3 text-sm">
-              {categories.map((category) => (
-                <li key={category.id}>
-                  <Link
-                    href={`/category/${category.slug}`}
-                    className="text-white dark:text-white hover:text-red-600 dark:hover:text-red-600 transition-colors font-light"
-                  >
-                    {category.name}
-                  </Link>
-                </li>
-              ))}
+              {categories
+                .filter((category) => category.name !== 'Ahabanza')
+                .map((category) => (
+                  <li key={category.id}>
+                    <Link
+                      href={`/category/${category.slug}`}
+                      className="text-white dark:text-white hover:text-red-600 dark:hover:text-red-600 transition-colors font-light"
+                    >
+                      {category.name}
+                    </Link>
+                  </li>
+                ))}
             </ul>
           </div>
 
