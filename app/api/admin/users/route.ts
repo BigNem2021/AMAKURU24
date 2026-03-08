@@ -1,0 +1,292 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/lib/auth';
+
+const VALID_ROLES = new Set(['admin', 'editor']);
+
+async function getAuthorizedRequester(request: NextRequest) {
+  const requesterEmail = request.headers.get('x-admin-email')?.trim().toLowerCase();
+
+  if (!requesterEmail) {
+    return { error: 'Unauthorized: missing admin identity', status: 401 as const };
+  }
+
+  const requester = await prisma.adminUser.findUnique({
+    where: { email: requesterEmail },
+    select: { id: true, email: true, role: true },
+  });
+
+  if (!requester || requester.role !== 'admin') {
+    return { error: 'Only admins can manage users', status: 403 as const };
+  }
+
+  return { requester };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await getAuthorizedRequester(request);
+    if ('error' in auth) {
+      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
+    }
+
+    const users = await prisma.adminUser.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json({ success: true, users }, { status: 200 });
+  } catch (error) {
+    console.error('List admin users error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const name = String(body?.name || '').trim();
+    const email = String(body?.email || '').trim().toLowerCase();
+    const password = String(body?.password || '');
+    const role = String(body?.role || 'editor').trim().toLowerCase();
+
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { success: false, message: 'Name, email, and password are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!VALID_ROLES.has(role)) {
+      return NextResponse.json(
+        { success: false, message: 'Role must be admin or editor' },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { success: false, message: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await prisma.adminUser.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, message: 'User already exists with this email' },
+        { status: 409 }
+      );
+    }
+
+    const usersCount = await prisma.adminUser.count();
+
+    // If users already exist, only an admin can create new users.
+    if (usersCount > 0) {
+      const auth = await getAuthorizedRequester(request);
+      if ('error' in auth) {
+        return NextResponse.json(
+          { success: false, message: auth.error },
+          { status: auth.status }
+        );
+      }
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const createdUser = await prisma.adminUser.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'User created successfully',
+        user: createdUser,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Create admin user error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const auth = await getAuthorizedRequester(request);
+    if ('error' in auth) {
+      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
+    }
+
+    const body = await request.json();
+    const userId = Number(body?.id);
+    const name = body?.name !== undefined ? String(body.name).trim() : undefined;
+    const role = body?.role !== undefined ? String(body.role).trim().toLowerCase() : undefined;
+    const password = body?.password !== undefined ? String(body.password) : undefined;
+
+    if (!Number.isFinite(userId)) {
+      return NextResponse.json(
+        { success: false, message: 'Valid user id is required' },
+        { status: 400 }
+      );
+    }
+
+    if (role !== undefined && !VALID_ROLES.has(role)) {
+      return NextResponse.json(
+        { success: false, message: 'Role must be admin or editor' },
+        { status: 400 }
+      );
+    }
+
+    if (password !== undefined && password.length > 0 && password.length < 8) {
+      return NextResponse.json(
+        { success: false, message: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    const target = await prisma.adminUser.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+
+    if (!target) {
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    if (target.role === 'admin' && role === 'editor') {
+      const adminCount = await prisma.adminUser.count({ where: { role: 'admin' } });
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          { success: false, message: 'Cannot demote the last admin' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const updateData: {
+      name?: string;
+      role?: string;
+      password?: string;
+    } = {};
+
+    if (name !== undefined && name.length > 0) updateData.name = name;
+    if (role !== undefined) updateData.role = role;
+    if (password !== undefined && password.length > 0) {
+      updateData.password = await hashPassword(password);
+    }
+
+    const updatedUser = await prisma.adminUser.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json(
+      { success: true, message: 'User updated successfully', user: updatedUser },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Update admin user error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await getAuthorizedRequester(request);
+    if ('error' in auth) {
+      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const userId = Number(searchParams.get('id'));
+
+    if (!Number.isFinite(userId)) {
+      return NextResponse.json(
+        { success: false, message: 'Valid user id is required' },
+        { status: 400 }
+      );
+    }
+
+    const target = await prisma.adminUser.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+
+    if (!target) {
+      return NextResponse.json(
+        { success: false, message: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    if (target.role === 'admin') {
+      const adminCount = await prisma.adminUser.count({ where: { role: 'admin' } });
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          { success: false, message: 'Cannot delete the last admin' },
+          { status: 400 }
+        );
+      }
+    }
+
+    await prisma.adminUser.delete({ where: { id: userId } });
+
+    return NextResponse.json(
+      { success: true, message: 'User deleted successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Delete admin user error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

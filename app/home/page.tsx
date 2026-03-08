@@ -11,6 +11,9 @@ export default function HomePage() {
   const t = getTranslation(language);
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [newsletterMessage, setNewsletterMessage] = useState('');
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -43,6 +46,31 @@ export default function HomePage() {
 
     fetchArticles();
   }, []);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterStatus('error');
+      setNewsletterMessage('Please enter a valid email address');
+      return;
+    }
+
+    setNewsletterStatus('loading');
+    
+    // Simulate newsletter subscription (replace with actual API call when ready)
+    setTimeout(() => {
+      setNewsletterStatus('success');
+      setNewsletterMessage('Thank you for subscribing! Check your email for confirmation.');
+      setEmail('');
+      
+      // Reset after 5 seconds
+      setTimeout(() => {
+        setNewsletterStatus('idle');
+        setNewsletterMessage('');
+      }, 5000);
+    }, 1000);
+  };
 
   return (
     <>
@@ -154,17 +182,33 @@ export default function HomePage() {
             <p className="text-neutral-600 dark:text-neutral-400 mb-8">
               Subscribe to get the latest breaking news and investigative stories delivered to your inbox.
             </p>
-            <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 px-4 py-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={newsletterStatus === 'loading'}
+                className="flex-1 px-4 py-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm disabled:opacity-50"
                 required
               />
-              <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap">
-                Subscribe
+              <button 
+                type="submit"
+                disabled={newsletterStatus === 'loading'}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {newsletterStatus === 'loading' ? 'Subscribing...' : 'Subscribe'}
               </button>
             </form>
+            {newsletterMessage && (
+              <p className={`mt-4 text-sm ${
+                newsletterStatus === 'success' 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {newsletterMessage}
+              </p>
+            )}
           </div>
         </section>
       </main>

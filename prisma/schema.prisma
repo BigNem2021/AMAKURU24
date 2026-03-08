@@ -64,3 +64,14 @@ model AdminUser {
 
   @@map("admin_users")
 }
+
+model ExchangeRate {
+  id        Int       @id @default(autoincrement())
+  currency  String    @unique
+  rate      Float
+  change    Float     @default(0)
+  updatedAt DateTime  @updatedAt
+  createdAt DateTime  @default(now())
+
+  @@map("exchange_rates")
+}

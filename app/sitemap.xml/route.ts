@@ -1,18 +1,22 @@
 'use server';
 
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
-  const baseUrl = 'https://amakuru.news';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://intambwemedia.com';
   
   try {
-    // Fetch all articles for the sitemap
-    const articlesResponse = await fetch(`${baseUrl}/api/articles?limit=1000`, {
-      next: { revalidate: 3600 }, // Revalidate every hour
+    // Fetch all articles for the sitemap directly from database
+    const articles = await prisma.article.findMany({
+      select: {
+        slug: true,
+        publishedAt: true,
+      },
+      orderBy: {
+        publishedAt: 'desc',
+      },
     });
-    
-    const articlesData = await articlesResponse.json();
-    const articles = articlesData.data || [];
 
     const sitemapUrls = [
       {
@@ -92,6 +96,26 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Sitemap generation error:', error);
-    return new NextResponse('Error generating sitemap', { status: 500 });
+    // Return a minimal sitemap with just the main pages if database query fails
+    const minimalXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${process.env.NEXT_PUBLIC_BASE_URL || 'https://amakuru.news'}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${process.env.NEXT_PUBLIC_BASE_URL || 'https://amakuru.news'}/breaking</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
+  </url>
+</urlset>`;
+    return new NextResponse(minimalXml, {
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+      },
+    });
   }
 }

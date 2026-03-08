@@ -12,7 +12,11 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
   const t = getTranslation(language);
   const searchParams = useSearchParams();
   const [articles, setArticles] = useState<any[]>([]);
+  const [allArticles, setAllArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortOption, setSortOption] = useState('latest');
+  const articlesPerPage = 9;
 
   const categoryTitles: Record<string, string> = {
     amakuru: 'Amakuru',
@@ -49,9 +53,12 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
         setLoading(true);
         const response = await fetch(`/api/articles?category=${params.category}`);
         const data = await response.json();
-        setArticles(data.data || []);
+        const fetchedArticles = data.data || [];
+        setAllArticles(fetchedArticles);
+        setArticles(fetchedArticles);
       } catch (error) {
         console.error('Failed to fetch articles:', error);
+        setAllArticles([]);
         setArticles([]);
       } finally {
         setLoading(false);
@@ -60,6 +67,93 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
 
     fetchArticles();
   }, [params.category]);
+
+  // Sort articles when sort option changes
+  useEffect(() => {
+    let sorted = [...allArticles];
+    
+    switch (sortOption) {
+      case 'latest':
+        // Already sorted by latest from API
+        break;
+      case 'popular':
+        // Sort by a popularity metric (you can customize this)
+        sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+        break;
+      case 'discussed':
+        // Sort by comments/engagement (you can customize this)
+        sorted.sort((a, b) => (b.comments || 0) - (a.comments || 0));
+        break;
+      default:
+        break;
+    }
+    
+    setArticles(sorted);
+    setCurrentPage(1); // Reset to first page when sorting changes
+  }, [sortOption, allArticles]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(articles.length / articlesPerPage);
+  const startIndex = (currentPage - 1) * articlesPerPage;
+  const endIndex = startIndex + articlesPerPage;
+  const currentArticles = articles.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToPrevious = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  };
+
+  const goToNext = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      if (currentPage > 3) {
+        pages.push('...');
+      }
+      
+      // Show pages around current page
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      
+      if (currentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortOption(e.target.value);
+  };
 
   return (
     <>
@@ -83,15 +177,20 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Showing {articles.length} articles
+                  Showing {currentArticles.length} of {articles.length} articles
+                  {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <label className="text-sm font-medium">Kurikiranya uhereye:</label>
-                <select className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm">
-                  <option>Iziheruka</option>
-                  <option>Izasomwe cyane</option>
-                  <option>Izavuzweho cyane</option>
+                <select 
+                  value={sortOption}
+                  onChange={handleSortChange}
+                  className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm cursor-pointer"
+                >
+                  <option value="latest">Iziheruka</option>
+                  <option value="popular">Izasomwe cyane</option>
+                  <option value="discussed">Izavuzweho cyane</option>
                 </select>
               </div>
             </div>
@@ -105,9 +204,9 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
               <div className="text-center py-12">
                 <p className="text-neutral-600 dark:text-neutral-400">Inkuru ziri gufunguka...</p>
               </div>
-            ) : articles.length > 0 ? (
+            ) : currentArticles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {articles.map((article) => (
+                {currentArticles.map((article) => (
                   <NewsCard key={article.id} {...article} sources={[]} />
                 ))}
               </div>
@@ -120,18 +219,26 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
             )}
 
             {/* Pagination */}
-            {articles.length > 0 && (
+            {!loading && articles.length > articlesPerPage && (
               <div className="mt-12 flex items-center justify-center gap-2">
-                <button className="px-4 py-2 rounded border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                <button 
+                  onClick={goToPrevious}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   ← {t.common.previous}
                 </button>
                 <div className="flex gap-1">
-                  {[1, 2, 3, '...', 10].map((page) => (
+                  {getPageNumbers().map((page, index) => (
                     <button
-                      key={page}
+                      key={index}
+                      onClick={() => typeof page === 'number' ? goToPage(page) : null}
+                      disabled={page === '...'}
                       className={`px-3 py-2 rounded transition-colors ${
-                        page === 1
+                        page === currentPage
                           ? 'bg-primary-600 text-white'
+                          : page === '...'
+                          ? 'border-0 cursor-default'
                           : 'border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                       }`}
                     >
@@ -139,7 +246,11 @@ export default function CategoryPage({ params: paramsPromise }: { params: Promis
                     </button>
                   ))}
                 </div>
-                <button className="px-4 py-2 rounded border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                <button 
+                  onClick={goToNext}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {t.common.next} →
                 </button>
               </div>

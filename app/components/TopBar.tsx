@@ -32,7 +32,8 @@ export function TopBar() {
       // Using Open-Meteo API (free, no API key required)
       // Fetch weather for Kigali, Rwanda (coordinates: -1.9536, 29.8739)
       const response = await fetch(
-        'https://api.open-meteo.com/v1/forecast?latitude=-1.9536&longitude=29.8739&current=temperature_2m,weather_code&timezone=Africa/Kigali'
+        'https://api.open-meteo.com/v1/forecast?latitude=-1.9536&longitude=29.8739&current=temperature_2m,weather_code&timezone=Africa/Kigali',
+        { signal: AbortSignal.timeout(5000) } // 5 second timeout
       );
       const data = await response.json();
       const current = data.current;
@@ -71,7 +72,7 @@ export function TopBar() {
         icon: weatherInfo.icon,
       };
     } catch (error) {
-      console.error('Failed to fetch weather data:', error);
+      // Silently handle - external API may be unavailable
       // Fallback
       return {
         temp: 24,
@@ -85,7 +86,9 @@ export function TopBar() {
     try {
       // Using exchangerate-api.com (free tier - 1500 requests/month)
       // Converts USD, EUR, GBP to RWF
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/RWF');
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/RWF', {
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
       const data = await response.json();
       
       const rates = data.rates;
@@ -115,7 +118,7 @@ export function TopBar() {
 
       return exchangeData;
     } catch (error) {
-      console.error('Failed to fetch exchange rates:', error);
+      // Silently handle - external API may be unavailable or blocked
       // Fallback to mock data
       return [
         { code: 'USD', rate: 1287, change: 0.15 },
