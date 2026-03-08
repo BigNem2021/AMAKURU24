@@ -73,7 +73,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#e2001a" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="canonical" href="https://amakuru.news" />
+        <link rel="canonical" href="https://intambwemedia.com" />
         <link rel="icon" href="/logo.png" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
         <script
