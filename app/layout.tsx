@@ -98,6 +98,7 @@ export default function RootLayout({
             }),
           }}
         />
+        <script defer src="https://analytics.intambwemedia.com/script.js" data-website-id="810d43c5-4b69-4f2b-a04f-21c859c0f6e0"></script>
       </head>
       <body>
         <ThemeProvider>
