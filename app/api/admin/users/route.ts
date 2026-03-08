@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
+import type { PrismaClient } from '@prisma/client';
 
 const VALID_ROLES = new Set(['admin', 'editor']);
 
-async function getAuthorizedRequester(request: NextRequest) {
+async function getPrismaSafely() {
+  try {
+    const { prisma } = await import('@/lib/prisma');
+    return { prisma };
+  } catch (error) {
+    console.error('Prisma initialization error in admin users route:', error);
+    return {
+      errorResponse: NextResponse.json(
+        {
+          success: false,
+          message: 'Database not ready. Run migrations/seed and try again.',
+        },
+        { status: 503 }
+      ),
+    };
+  }
+}
+
+async function getAuthorizedRequester(request: NextRequest, prisma: PrismaClient) {
   const requesterEmail = request.headers.get('x-admin-email')?.trim().toLowerCase();
 
   if (!requesterEmail) {
@@ -25,7 +43,11 @@ async function getAuthorizedRequester(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await getAuthorizedRequester(request);
+    const prismaResult = await getPrismaSafely();
+    if ('errorResponse' in prismaResult) return prismaResult.errorResponse;
+    const { prisma } = prismaResult;
+
+    const auth = await getAuthorizedRequester(request, prisma);
     if ('error' in auth) {
       return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
     }
@@ -83,6 +105,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const prismaResult = await getPrismaSafely();
+    if ('errorResponse' in prismaResult) return prismaResult.errorResponse;
+    const { prisma } = prismaResult;
+
     const existingUser = await prisma.adminUser.findUnique({
       where: { email },
       select: { id: true },
@@ -99,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // If users already exist, only an admin can create new users.
     if (usersCount > 0) {
-      const auth = await getAuthorizedRequester(request);
+      const auth = await getAuthorizedRequester(request, prisma);
       if ('error' in auth) {
         return NextResponse.json(
           { success: false, message: auth.error },
@@ -145,7 +171,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await getAuthorizedRequester(request);
+    const prismaResult = await getPrismaSafely();
+    if ('errorResponse' in prismaResult) return prismaResult.errorResponse;
+    const { prisma } = prismaResult;
+
+    const auth = await getAuthorizedRequester(request, prisma);
     if ('error' in auth) {
       return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
     }
@@ -239,7 +269,11 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const auth = await getAuthorizedRequester(request);
+    const prismaResult = await getPrismaSafely();
+    if ('errorResponse' in prismaResult) return prismaResult.errorResponse;
+    const { prisma } = prismaResult;
+
+    const auth = await getAuthorizedRequester(request, prisma);
     if ('error' in auth) {
       return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
     }

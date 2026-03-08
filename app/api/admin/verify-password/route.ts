@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { verifyPassword } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
@@ -16,39 +15,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.adminUser.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-        role: true,
-        name: true,
-      },
-    });
+    try {
+      const { prisma } = await import('@/lib/prisma');
 
-    if (user) {
-      const passwordMatch = await verifyPassword(password, user.password);
+      const user = await prisma.adminUser.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          password: true,
+          role: true,
+          name: true,
+        },
+      });
 
-      if (!passwordMatch) {
+      if (user) {
+        let passwordMatch = false;
+
+        try {
+          passwordMatch = await verifyPassword(password, user.password);
+        } catch (passwordError) {
+          // Allow legacy/plain-text seed values without crashing auth flow.
+          passwordMatch = password === user.password;
+          if (!passwordMatch) {
+            console.warn('Password verification failed for admin user:', passwordError);
+          }
+        }
+
+        if (!passwordMatch) {
+          return NextResponse.json(
+            { success: false, message: 'Invalid email or password' },
+            { status: 401 }
+          );
+        }
+
         return NextResponse.json(
-          { success: false, message: 'Invalid email or password' },
-          { status: 401 }
+          {
+            success: true,
+            user: {
+              id: user.id,
+              email: user.email,
+              role: user.role,
+              name: user.name,
+            },
+          },
+          { status: 200 }
         );
       }
-
-      return NextResponse.json(
-        {
-          success: true,
-          user: {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            name: user.name,
-          },
-        },
-        { status: 200 }
-      );
+    } catch (dbError) {
+      // DB can be unavailable before initial migration/seed; continue to env fallback.
+      console.warn('Database auth lookup failed, trying env fallback:', dbError);
     }
 
     // Legacy env fallback to avoid lockout if DB user not seeded yet.
