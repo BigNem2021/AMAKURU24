@@ -4,9 +4,9 @@ import { ThemeProvider } from '@/app/components/ThemeProvider';
 import { TopBar } from '@/app/components/TopBar';
 
 export const metadata: Metadata = {
-  title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose | Breaking News',
+  title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose ',
   description:
-    'Independent, credible journalism for East Africa. Breaking news, investigations, and analysis in Kinyarwanda, English, and Swahili on Rwanda, politics, business, technology, and more.',
+    'Amakuru Agezweho | Igihe Cyose',
   keywords: ['News', 'East Africa', 'Rwanda', 'Journalism', 'Amakuru', 'Intambwe', 'Breaking News', 'Politics', 'Business', 'Technology'],
   authors: [{ name: 'Intambwe Media' }],
   creator: 'Intambwe Media',
@@ -83,7 +83,7 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'NewsMediaOrganization',
               name: 'Intambwe Media',
-              url: 'https://amakuru.news',
+              url: 'https://intambwemedia.com',
               logo: 'https://amakuru.news/logo.png',
               description: 'Independent journalism for East Africa',
               sameAs: [
@@ -98,6 +98,7 @@ export default function RootLayout({
             }),
           }}
         />
+        <script defer src="https://analytics.intambwemedia.com/script.js" data-website-id="810d43c5-4b69-4f2b-a04f-21c859c0f6e0"></script>
       </head>
       <body>
         <ThemeProvider>
