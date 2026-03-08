@@ -97,9 +97,38 @@ export async function POST(request: NextRequest) {
       scheduled_for,
     } = body;
 
-    if (!title || !excerpt || !category_id || !author) {
+    // Validate required fields
+    if (!title || !title.trim()) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: title, excerpt, category_id, author' },
+        { success: false, error: 'Title is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!excerpt || !excerpt.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Excerpt is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!content || !content.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Content is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!category_id) {
+      return NextResponse.json(
+        { success: false, error: 'Category is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!author || !author.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Author is required' },
         { status: 400 }
       );
     }
@@ -111,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     if (!category) {
       return NextResponse.json(
-        { success: false, error: 'Category not found' },
+        { success: false, error: `Category with ID ${category_id} not found` },
         { status: 404 }
       );
     }
@@ -121,12 +150,12 @@ export async function POST(request: NextRequest) {
 
     const article = await prisma.article.create({
       data: {
-        title,
+        title: title.trim(),
         slug,
-        excerpt,
-        content,
+        excerpt: excerpt.trim(),
+        content: content.trim(),
         categoryId: parseInt(category_id),
-        author,
+        author: author.trim(),
         image,
         tags: tags && Array.isArray(tags) ? JSON.stringify(tags) : null,
         gallery: gallery && Array.isArray(gallery) ? JSON.stringify(gallery) : null,
@@ -164,13 +193,20 @@ export async function POST(request: NextRequest) {
 
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { success: false, error: 'Article slug already exists' },
+        { success: false, error: 'Article slug already exists. Please use a different title.' },
         { status: 409 }
       );
     }
 
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body format' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: 'Failed to create article' },
+      { success: false, error: error.message || 'Failed to create article' },
       { status: 500 }
     );
   }

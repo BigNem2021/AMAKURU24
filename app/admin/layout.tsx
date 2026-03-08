@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { LogOut, Menu, X, Zap, FileText, BarChart3, Users } from 'lucide-react';
+import { LogOut, Menu, X, Zap, FileText, BarChart3, Users, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminLayout({
@@ -15,20 +15,39 @@ export default function AdminLayout({
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const auth = localStorage.getItem('adminAuth');
-    const adminEmail = localStorage.getItem('adminEmail');
-    const adminRole = localStorage.getItem('adminRole');
-    if (!auth) {
-      router.push('/admin/login');
-    } else {
-      setEmail(adminEmail || 'Admin');
-      setRole(adminRole || 'editor');
-      setIsLoading(false);
+    // Skip auth check for login page
+    if (pathname === '/admin/login') {
+      setIsChecking(false);
+      return;
     }
-  }, [router]);
+
+    const checkAuth = () => {
+      try {
+        const auth = localStorage.getItem('adminAuth');
+        const adminEmail = localStorage.getItem('adminEmail');
+        const adminRole = localStorage.getItem('adminRole');
+        
+        if (!auth) {
+          router.push('/admin/login');
+        } else {
+          setEmail(adminEmail || 'Admin');
+          setRole(adminRole || 'editor');
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.push('/admin/login');
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
@@ -48,12 +67,26 @@ export default function AdminLayout({
 
   const isActive = (href: string) => pathname === href;
 
-  if (isLoading) {
+  // Show loading only while checking auth
+  if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-        <div className="text-white">Loading...</div>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-red-600 animate-spin mx-auto mb-3" />
+          <div className="text-neutral-400">Verifying authentication...</div>
+        </div>
       </div>
     );
+  }
+
+  // Don't render admin layout for login page
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  // Don't render layout if not authenticated (redirect in progress)
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (

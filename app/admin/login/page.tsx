@@ -16,22 +16,52 @@ export default function LoginPage() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Helper functions
+  const getPasswordStrength = (pwd: string) => {
+    if (!pwd) return { strength: 0, label: '', color: '' };
+    if (pwd.length < 8) return { strength: 1, label: 'Weak', color: 'text-red-500' };
+    if (pwd.length < 12) return { strength: 2, label: 'Fair', color: 'text-yellow-500' };
+    if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) {
+      return { strength: 4, label: 'Strong', color: 'text-green-500' };
+    }
+    return { strength: 3, label: 'Good', color: 'text-green-400' };
+  };
+
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+  const passwordStrength = getPasswordStrength(password);
+  const isEmailValid = email.length > 0 ? isValidEmail(email) : true;
+
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setIsLoading(true);
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 1) {
+      setError('Please enter your password');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/verify-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.toLowerCase(), password }),
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         localStorage.setItem('adminAuth', 'true');
         localStorage.setItem('adminEmail', data.user?.email || email);
         localStorage.setItem('adminRole', data.user?.role || 'editor');
@@ -40,8 +70,9 @@ export default function LoginPage() {
       } else {
         setError(data.message || 'Invalid email or password. Please try again.');
       }
-    } catch {
-      setError('An error occurred. Please try again.');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -53,6 +84,27 @@ export default function LoginPage() {
     setSuccess('');
     setIsLoading(true);
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    if (name.trim().length < 2) {
+      setError('Please enter a valid name');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const currentAdminEmail = localStorage.getItem('adminEmail') || '';
 
@@ -60,11 +112,11 @@ export default function LoginPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-email': currentAdminEmail,
+          ...(currentAdminEmail && { 'x-admin-email': currentAdminEmail }),
         },
         body: JSON.stringify({
-          name,
-          email,
+          name: name.trim(),
+          email: email.toLowerCase(),
           password,
           role,
         }),
@@ -72,18 +124,19 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
-        setError(data.message || 'Failed to create user.');
-        return;
+      if (response.ok && data.success) {
+        setSuccess(`User "${data.user?.name}" created successfully as ${role}. You can now log in.`);
+        setMode('login');
+        setPassword('');
+        setName('');
+        setEmail('');
+        setRole('editor');
+      } else {
+        setError(data.message || 'Failed to create user. Please try again.');
       }
-
-      setSuccess(`User created successfully as ${role}. You can now log in.`);
-      setMode('login');
-      setPassword('');
-      setName('');
-      setRole('editor');
-    } catch {
-      setError('An error occurred while creating user. Please try again.');
+    } catch (error) {
+      console.error('User creation error:', error);
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -112,6 +165,7 @@ export default function LoginPage() {
               setMode('login');
               setError('');
               setSuccess('');
+              setPassword('');
             }}
             className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
               mode === 'login'
@@ -127,6 +181,7 @@ export default function LoginPage() {
               setMode('create');
               setError('');
               setSuccess('');
+              setPassword('');
             }}
             className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
               mode === 'create'
@@ -172,10 +227,17 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full px-4 py-2 pl-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                className={`w-full px-4 py-2 pl-10 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 transition-all ${
+                  email && !isEmailValid
+                    ? 'border-red-400 dark:border-red-500 focus:ring-red-600'
+                    : 'border-slate-300 dark:border-slate-600 focus:ring-red-600'
+                }`}
                 disabled={isLoading}
                 required
               />
+              {email && !isEmailValid && (
+                <p className="mt-1 text-xs text-red-500">Invalid email format</p>
+              )}
             </div>
           </div>
 
@@ -204,6 +266,36 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {mode === 'create' && password && (
+              <div className="mt-2 space-y-1">
+                <div className="flex gap-1">
+                  {[...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < passwordStrength.strength
+                          ? passwordStrength.strength <= 1
+                            ? 'bg-red-500'
+                            : passwordStrength.strength <= 2
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                          : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className={`text-xs ${passwordStrength.color}`}>
+                  Strength: {passwordStrength.label}
+                </p>
+                {passwordStrength.strength < 4 && (
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {passwordStrength.strength === 1 && 'Add uppercase, numbers, and symbols for stronger password'}
+                    {passwordStrength.strength === 2 && 'Add uppercase and numbers to strengthen password'}
+                    {passwordStrength.strength === 3 && 'Add a special character for maximum strength'}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {mode === 'create' && (
@@ -238,22 +330,28 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isLoading || !email || !password || (mode === 'create' && !name)}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+            disabled={
+              isLoading ||
+              !email ||
+              !password ||
+              !isEmailValid ||
+              (mode === 'create' && (!name || password.length < 8))
+            }
+            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
           >
             {isLoading
               ? mode === 'login'
                 ? 'Verifying...'
-                : 'Creating...'
+                : 'Creating User...'
               : mode === 'login'
               ? 'Access Admin Panel'
               : 'Create Account'}
           </button>
 
           {mode === 'create' && (
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
-              <UserPlus className="w-4 h-4" />
-              <span>Only logged-in admins can create users after first setup.</span>
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-2">
+              <UserPlus className="w-4 h-4 flex-shrink-0" />
+              <span>First user can be created freely. Additional users require admin authentication.</span>
             </div>
           )}
         </form>

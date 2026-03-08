@@ -35,8 +35,11 @@ export default function AdminHeader() {
   };
 
   const navItems = [
+    { label: 'Dashboard', href: '/admin/dashboard' },
     { label: 'Articles', href: '/admin/articles' },
     { label: 'Create Article', href: '/admin/create-article' },
+    { label: 'AI Generator', href: '/admin/ai-generator' },
+    { label: 'Users', href: '/admin/users' },
     { label: 'Adverts', href: '/admin/adverts' },
   ];
 

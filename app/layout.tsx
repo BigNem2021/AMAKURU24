@@ -4,9 +4,9 @@ import { ThemeProvider } from '@/app/components/ThemeProvider';
 import { TopBar } from '@/app/components/TopBar';
 
 export const metadata: Metadata = {
-  title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose | Breaking News',
+  title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose ',
   description:
-    'Independent, credible journalism for East Africa. Breaking news, investigations, and analysis in Kinyarwanda, English, and Swahili on Rwanda, politics, business, technology, and more.',
+    'Amakuru Agezweho | Igihe Cyose',
   keywords: ['News', 'East Africa', 'Rwanda', 'Journalism', 'Amakuru', 'Intambwe', 'Breaking News', 'Politics', 'Business', 'Technology'],
   authors: [{ name: 'Intambwe Media' }],
   creator: 'Intambwe Media',
@@ -20,12 +20,12 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ky_RW',
     alternateLocale: ['en_US', 'sw_TZ'],
-    url: 'https://amakuru.news',
+    url: 'https://intambwemedia.com',
     siteName: 'Intambwe Media',
-    title: 'Intambwe Media | Breaking News and Journalism',
-    description: 'Independent journalism covering Rwanda and East Africa in Kinyarwanda, English, and Swahili',
+    title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose',
+    description: 'Amakuru Agezweho | Igihe Cyose',
     images: [{
-      url: 'https://amakuru.news/logo.png',
+      url: 'https://intambwemedia.com/logo.png',
       width: 1200,
       height: 630,
       alt: 'Intambwe Media Logo',
@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@intambwemedias',
     creator: '@intambwemedias',
-    title: 'Intambwe Media | Breaking News',
-    description: 'Independent journalism from East Africa',
-    images: ['https://amakuru.news/logo.png'],
+    title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose',
+    description: 'Amakuru Agezweho | Igihe Cyose',
+    images: ['https://intambwemedia.com/logo.png'],
   },
   robots: {
     index: true,
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     languages: {
-      ky: 'https://amakuru.news/ky',
-      en: 'https://amakuru.news/en',
-      sw: 'https://amakuru.news/sw',
+      ky: 'https://intambwemedia.com/ky',
+      en: 'https://intambwemedia.com/en',
+      sw: 'https://intambwemedia.com/sw',
     },
   },
 };
@@ -83,9 +83,9 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'NewsMediaOrganization',
               name: 'Intambwe Media',
-              url: 'https://amakuru.news',
-              logo: 'https://amakuru.news/logo.png',
-              description: 'Independent journalism for East Africa',
+              url: 'https://intambwemedia.com',
+              logo: 'https://intambwemedia.com/logo.png',
+              description: 'Amakuru Agezweho | Igihe Cyose',
               sameAs: [
                 'https://twitter.com/intambwemedias',
                 'https://facebook.com/intambwemedia',

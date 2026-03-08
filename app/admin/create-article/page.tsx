@@ -112,24 +112,62 @@ export default function CreateArticlePage() {
     setLoading(true);
     setMessage(null);
 
+    // Validate required fields
+    if (!form.title.trim()) {
+      setMessage({ type: 'error', text: 'Please enter an article title' });
+      setLoading(false);
+      return;
+    }
+
+    if (!form.excerpt.trim()) {
+      setMessage({ type: 'error', text: 'Please enter an article excerpt' });
+      setLoading(false);
+      return;
+    }
+
+    if (!form.content.trim()) {
+      setMessage({ type: 'error', text: 'Please enter article content' });
+      setLoading(false);
+      return;
+    }
+
+    if (!form.category) {
+      setMessage({ type: 'error', text: 'Please select a category' });
+      setLoading(false);
+      return;
+    }
+
+    if (!form.author.trim()) {
+      setMessage({ type: 'error', text: 'Please enter the author name' });
+      setLoading(false);
+      return;
+    }
+
     try {
       const tagArray = form.tags
         .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag !== '');
 
+      const categoryId = parseInt(form.category);
+      if (isNaN(categoryId)) {
+        setMessage({ type: 'error', text: 'Invalid category selected' });
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/articles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: form.title,
-          excerpt: form.excerpt,
-          content: form.content,
-          category_id: parseInt(form.category),
-          author: form.author,
+          title: form.title.trim(),
+          excerpt: form.excerpt.trim(),
+          content: form.content.trim(),
+          category_id: categoryId,
+          author: form.author.trim(),
           image: form.image || 'https://images.unsplash.com/photo-1585776245865-b0d71db86b00?w=800&q=80',
           tags: tagArray,
-          readTime: parseInt(form.readTime.toString()),
+          readTime: parseInt(form.readTime.toString()) || 5,
           featured: form.featured,
           gallery: form.gallery,
           status: 'published',
@@ -138,13 +176,13 @@ export default function CreateArticlePage() {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         setMessage({ type: 'success', text: 'Article published successfully!' });
         setForm({
           title: '',
           excerpt: '',
           content: '',
-          category: 'technology',
+          category: '',
           author: '',
           image: '',
           tags: '',
@@ -160,6 +198,7 @@ export default function CreateArticlePage() {
         setMessage({ type: 'error', text: data.error || 'Failed to publish article' });
       }
     } catch (error) {
+      console.error('Article creation error:', error);
       setMessage({ type: 'error', text: 'An error occurred. Please try again.' });
     } finally {
       setLoading(false);
