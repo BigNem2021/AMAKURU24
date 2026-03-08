@@ -20,12 +20,12 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ky_RW',
     alternateLocale: ['en_US', 'sw_TZ'],
-    url: 'https://amakuru.news',
+    url: 'https://intambwemedia.com',
     siteName: 'Intambwe Media',
     title: 'Intambwe Media | Amakuru Agezweho | Igihe Cyose',
     description: 'Amakuru Agezweho | Igihe Cyose',
     images: [{
-      url: 'https://amakuru.news/logo.png',
+      url: 'https://intambwemedia.com/logo.png',
       width: 1200,
       height: 630,
       alt: 'Intambwe Media Logo',
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     languages: {
-      ky: 'https://amakuru.news/ky',
-      en: 'https://amakuru.news/en',
-      sw: 'https://amakuru.news/sw',
+      ky: 'https://intambwemedia.com/ky',
+      en: 'https://intambwemedia.com/en',
+      sw: 'https://intambwemedia.com/sw',
     },
   },
 };
