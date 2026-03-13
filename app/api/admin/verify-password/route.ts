@@ -15,6 +15,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- ENV CREDENTIALS CHECK (always runs, independent of DB) ---
+    // This is the authoritative override: if ADMIN_EMAIL + ADMIN_PASSWORD are
+    // set on the server and the submitted credentials match, grant access
+    // immediately. This ensures login works even when the DB has a stale hash
+    // or is unavailable (e.g. SQLite on first deploy).
+    const envEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const envPassword = process.env.ADMIN_PASSWORD || '';
+
+    if (envEmail && envPassword && email === envEmail && password === envPassword) {
+      // Opportunistically heal the DB hash in the background so future bcrypt
+      // checks pass, but do NOT block the login response on this.
+      (async () => {
+        try {
+          const { prisma } = await import('@/lib/prisma');
+          const { hashPassword } = await import('@/lib/auth');
+          const user = await prisma.adminUser.findUnique({ where: { email } });
+          if (user) {
+            const newHash = await hashPassword(password);
+            await prisma.adminUser.update({
+              where: { email },
+              data: { password: newHash },
+            });
+          }
+        } catch {
+          // best-effort only – ignore errors
+        }
+      })();
+
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            email: envEmail,
+            role: 'admin',
+            name: 'Admin',
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    // --- DATABASE CHECK ---
     try {
       const { prisma } = await import('@/lib/prisma');
 
@@ -45,7 +87,7 @@ export async function POST(request: NextRequest) {
         if (!passwordMatch) {
           return NextResponse.json(
             { success: false, message: 'Invalid email or password' },
-            { status: 401 }
+            { status: 200 }
           );
         }
 
@@ -63,31 +105,13 @@ export async function POST(request: NextRequest) {
         );
       }
     } catch (dbError) {
-      // DB can be unavailable before initial migration/seed; continue to env fallback.
-      console.warn('Database auth lookup failed, trying env fallback:', dbError);
-    }
-
-    // Legacy env fallback to avoid lockout if DB user not seeded yet.
-    const correctEmail = process.env.ADMIN_EMAIL || '';
-    const correctPassword = process.env.ADMIN_PASSWORD || '';
-
-    if (email === correctEmail && password === correctPassword) {
-      return NextResponse.json(
-        {
-          success: true,
-          user: {
-            email: correctEmail,
-            role: 'admin',
-            name: 'Admin',
-          },
-        },
-        { status: 200 }
-      );
+      // DB can be unavailable before initial migration/seed.
+      console.warn('Database auth lookup failed:', dbError);
     }
 
     return NextResponse.json(
       { success: false, message: 'Invalid email or password' },
-      { status: 401 }
+      { status: 200 }
     );
   } catch (error) {
     console.error('Verify password error:', error);

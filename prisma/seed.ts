@@ -6,7 +6,7 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // Create default admin user
-  const hashedPassword = await hashPassword(process.env.ADMIN_PASSWORD || 'iRAFASHA@2025');
+  const hashedPassword = await hashPassword(process.env.ADMIN_PASSWORD || 'AdminIRAFASHA@2025');
 
   try {
     const admin = await prisma.adminUser.create({
