@@ -21,9 +21,15 @@ export async function POST(request: NextRequest) {
     // immediately. This ensures login works even when the DB has a stale hash
     // or is unavailable (e.g. SQLite on first deploy).
     const envEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const envPassword = process.env.ADMIN_PASSWORD || '';
+    const envPasswordRaw = process.env.ADMIN_PASSWORD || '';
+    const envPasswordNormalized = envPasswordRaw.replace(/\r?\n/g, '').trim();
+    const submittedPasswordNormalized = password.replace(/\r?\n/g, '').trim();
 
-    if (envEmail && envPassword && email === envEmail && password === envPassword) {
+    const envPasswordMatches =
+      password === envPasswordRaw ||
+      (submittedPasswordNormalized.length > 0 && submittedPasswordNormalized === envPasswordNormalized);
+
+    if (envEmail && envPasswordRaw && email === envEmail && envPasswordMatches) {
       // Opportunistically heal the DB hash in the background so future bcrypt
       // checks pass, but do NOT block the login response on this.
       (async () => {

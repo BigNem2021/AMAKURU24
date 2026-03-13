@@ -4,6 +4,46 @@ import type { PrismaClient } from '@prisma/client';
 
 const VALID_ROLES = new Set(['admin', 'editor']);
 
+function toUsersRouteErrorResponse(error: unknown) {
+  const prismaCode =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code?: unknown }).code || '')
+      : '';
+
+  const message = error instanceof Error ? error.message : String(error || '');
+
+  const isDatabaseNotReady =
+    [
+      'P1000',
+      'P1001',
+      'P1002',
+      'P1008',
+      'P1017',
+      'P2021',
+      'P2022',
+      'P2023',
+      'P2024',
+    ].includes(prismaCode) ||
+    /no such table|does not exist|unknown column|database is locked|unable to open database file|schema/i.test(
+      message
+    );
+
+  if (isDatabaseNotReady) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Database not ready. Run migrations/seed and restart the app.',
+      },
+      { status: 503 }
+    );
+  }
+
+  return NextResponse.json(
+    { success: false, message: 'Internal server error' },
+    { status: 500 }
+  );
+}
+
 async function getPrismaSafely() {
   try {
     const { prisma } = await import('@/lib/prisma');
@@ -24,9 +64,21 @@ async function getPrismaSafely() {
 
 async function getAuthorizedRequester(request: NextRequest, prisma: PrismaClient) {
   const requesterEmail = request.headers.get('x-admin-email')?.trim().toLowerCase();
+  const envAdminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 
   if (!requesterEmail) {
     return { error: 'Unauthorized: missing admin identity', status: 401 as const };
+  }
+
+  // Allow the configured environment admin account even if DB role is stale.
+  if (envAdminEmail && requesterEmail === envAdminEmail) {
+    return {
+      requester: {
+        id: 0,
+        email: requesterEmail,
+        role: 'admin',
+      },
+    };
   }
 
   const requester = await prisma.adminUser.findUnique({
@@ -69,10 +121,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, users }, { status: 200 });
   } catch (error) {
     console.error('List admin users error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    return toUsersRouteErrorResponse(error);
   }
 }
 
@@ -162,10 +211,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('Create admin user error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    return toUsersRouteErrorResponse(error);
   }
 }
 
@@ -260,10 +306,7 @@ export async function PATCH(request: NextRequest) {
     );
   } catch (error) {
     console.error('Update admin user error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    return toUsersRouteErrorResponse(error);
   }
 }
 
@@ -318,9 +361,6 @@ export async function DELETE(request: NextRequest) {
     );
   } catch (error) {
     console.error('Delete admin user error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    return toUsersRouteErrorResponse(error);
   }
 }
